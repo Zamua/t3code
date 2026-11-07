@@ -225,6 +225,17 @@ function ThreadNavigationSidebarPane(props: ThreadNavigationSidebarProps) {
   const [settledVisibleCount, setSettledVisibleCount] = useState(
     THREAD_LIST_V2_SETTLED_INITIAL_COUNT,
   );
+  const [collapsedThreadIds, setCollapsedThreadIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const toggleThreadCollapsed = (threadKey: string) => {
+    setCollapsedThreadIds((current) => {
+      const next = new Set(current);
+      if (next.has(threadKey)) next.delete(threadKey);
+      else next.add(threadKey);
+      return next;
+    });
+  };
   const settledResetKey = `${options.selectedEnvironmentId ?? "all"}:${selectedProjectKey ?? "all"}:${props.searchQuery.trim()}`;
   const [lastSettledResetKey, setLastSettledResetKey] = useState(settledResetKey);
   if (lastSettledResetKey !== settledResetKey) {
@@ -285,6 +296,7 @@ function ThreadNavigationSidebarPane(props: ThreadNavigationSidebarProps) {
     snoozedShelfExpanded,
     settledShelfExpanded,
     selectedThreadKey: props.selectedThreadKey ?? null,
+    collapsedThreadIds,
   });
   const listItems: readonly SidebarListItem[] =
     settledShelfExpanded && threadListV2Layout.hiddenSettledCount > 0
@@ -408,6 +420,11 @@ function ThreadNavigationSidebarPane(props: ThreadNavigationSidebarProps) {
         return (
           <ThreadListV2Row
             onNewThreadOnBranch={props.onNewThreadOnBranch}
+            depth={item.item.depth ?? 0}
+            hasChildren={item.item.hasChildren === true}
+            collapsed={item.item.collapsed === true}
+            role={item.item.role ?? null}
+            onToggleCollapsed={() => toggleThreadCollapsed(`${thread.environmentId}:${thread.id}`)}
             thread={thread}
             variant={item.item.variant}
             hasQueuedMessages={item.hasQueuedMessages}

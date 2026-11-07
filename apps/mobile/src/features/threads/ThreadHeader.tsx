@@ -4,6 +4,7 @@ import type { AppBarAction, AppBarMenu } from "../../components/ui/AppBar.types"
 import { useAdaptiveWorkspaceLayout } from "../layout/AdaptiveWorkspaceLayout";
 import type { ThreadInspectorMode } from "./thread-inspector-navigation";
 import { useWorkspaceBackNavigation } from "../layout/workspace/useAndroidWorkspaceNavigation";
+import { setThreadSidebarOpen } from "./thread-sidebar-state";
 import {
   threadTerminalMenu,
   useThreadGitMenuDefinition,
@@ -23,7 +24,7 @@ export function ThreadHeader(props: {
   readonly onOpenFilesInspector: () => void;
 }) {
   const goBack = useWorkspaceBackNavigation("threads");
-  const { panes, toggleAuxiliaryPane, composerKeyboardActive, startNewTask } =
+  const { layout, panes, toggleAuxiliaryPane, composerKeyboardActive, startNewTask } =
     useAdaptiveWorkspaceLayout();
   const gitMenu = useThreadGitMenuDefinition(props.gitControls);
   const terminalMenu = threadTerminalMenu(props.gitControls);
@@ -47,7 +48,7 @@ export function ThreadHeader(props: {
     <AppBar
       title={props.title}
       subtitle={props.subtitle}
-      onBackToList={goBack}
+      onBackToList={layout.variant === "compact" ? () => setThreadSidebarOpen(true) : goBack}
       onCompose={props.draft ? undefined : startNewTask}
       backInSplitView={
         props.onReturnToThread

@@ -87,7 +87,7 @@ export function CompactSidebarDrawer(props: {
           accessibilityRole="button"
           className="flex-1"
           onPress={onClose}
-          style={{ backgroundColor: "rgba(0,0,0,0.28)" }}
+          style={{ backgroundColor: "rgba(0,0,0,0.12)" }}
         />
       </View>
     </Modal>
