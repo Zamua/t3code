@@ -8,6 +8,8 @@ import { useNavigation, useNavigationState } from "@react-navigation/native";
 import { scopedThreadKey } from "../../../lib/scopedEntities";
 import { uuidv4 } from "../../../lib/uuid";
 import { usePendingTaskListActions } from "../../home/usePendingTaskListActions";
+import type { PendingNewTask } from "../../../state/use-pending-new-tasks";
+import type { ThreadPrPresentation } from "../../../state/thread-pr-presentation";
 import { useAdaptiveWorkspaceLayout } from "../adaptive-workspace-context";
 import { openSettings } from "../../settings/settings-navigation";
 import { ThreadNavigationSidebar } from "../../threads/ThreadNavigationSidebar";
@@ -40,7 +42,15 @@ function selectedThreadKey(state: { readonly index: number; readonly routes: rea
 }
 
 /** The thread list in the workspace's sidebar column. */
-export function WorkspaceThreadSidebar() {
+export function WorkspaceThreadSidebar(
+  props: {
+    readonly width?: number;
+    readonly visible?: boolean;
+    readonly onRequestVisibility?: () => void;
+    /** Called before a navigation so a compact drawer can close itself. */
+    readonly onWillNavigate?: () => void;
+  } = {},
+) {
   const navigation = useNavigation();
   const {
     layout,
@@ -53,17 +63,36 @@ export function WorkspaceThreadSidebar() {
   const selectDetail = useSelectWorkspaceDetail();
   const openThreadPullRequests = useOpenThreadPullRequests();
   const selectedThread = useNavigationState(selectedThreadKey);
-  const selectThreadRoute = (params: ReactNavigation.RootParamList["Thread"]) =>
+  const { onWillNavigate } = props;
+  const selectThreadRoute = (params: ReactNavigation.RootParamList["Thread"]) => {
+    onWillNavigate?.();
     selectDetail({ name: "Thread", params });
+  };
   const { openPendingTask } = usePendingTaskListActions(selectThreadRoute);
+  const openSettingsTab = () => {
+    onWillNavigate?.();
+    openWorkspaceTab("settings");
+  };
+  const openEnvironmentSettings = () => {
+    onWillNavigate?.();
+    openSettings(navigation, "SettingsEnvironments");
+  };
+  const openPendingTaskAndDismiss = (pendingTask: PendingNewTask) => {
+    onWillNavigate?.();
+    openPendingTask(pendingTask);
+  };
+  const openPullRequestsAndDismiss = (thread: EnvironmentThreadShell, pr: ThreadPrPresentation) => {
+    onWillNavigate?.();
+    openThreadPullRequests(thread, pr);
+  };
   return (
     <ThreadNavigationSidebar
-      width={layout.listPaneWidth ?? 0}
-      visible={panes.primarySidebarVisible}
-      onRequestVisibility={revealPrimarySidebar}
+      width={props.width ?? layout.listPaneWidth ?? 0}
+      visible={props.visible ?? panes.primarySidebarVisible}
+      onRequestVisibility={props.onRequestVisibility ?? revealPrimarySidebar}
       selectedThreadKey={selectedThread}
-      onOpenSettings={() => openWorkspaceTab("settings")}
-      onOpenEnvironmentSettings={() => openSettings(navigation, "SettingsEnvironments")}
+      onOpenSettings={openSettingsTab}
+      onOpenEnvironmentSettings={openEnvironmentSettings}
       onNewThreadInProject={(project: EnvironmentProject) =>
         selectThreadRoute({
           draft: {
@@ -85,14 +114,14 @@ export function WorkspaceThreadSidebar() {
           },
         })
       }
-      onOpenPendingTask={openPendingTask}
+      onOpenPendingTask={openPendingTaskAndDismiss}
       onSelectThread={(thread) =>
         selectThreadRoute({
           environmentId: String(thread.environmentId),
           threadId: String(thread.id),
         })
       }
-      onOpenThreadPullRequests={openThreadPullRequests}
+      onOpenThreadPullRequests={openPullRequestsAndDismiss}
       onSearchQueryChange={setPrimarySidebarSearchQuery}
       searchQuery={primarySidebarSearchQuery}
     />

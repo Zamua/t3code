@@ -1,4 +1,5 @@
 import { ChildThreadApprovals } from "./ChildThreadApprovals";
+import { CompactSidebarDrawer } from "./CompactSidebarDrawer";
 import { useOpenThreadInspector } from "./thread-inspector-navigation";
 import { useSidebarWorkspaceTabs } from "../layout/workspace/useSystemWorkspaceTabBar";
 import { useWorkspaceTabs } from "../layout/workspace/WorkspaceTabsContext";
@@ -82,6 +83,7 @@ import {
   useCallback,
   useEffect,
   useEffectEvent,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -90,12 +92,14 @@ import {
   AppState,
   Keyboard,
   Platform,
+  Pressable,
   useWindowDimensions,
   View,
   type GestureResponderEvent,
   type LayoutChangeEvent,
   type ViewInstance,
 } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import {
   KeyboardController,
   KeyboardStickyView,
@@ -390,6 +394,22 @@ function ThreadDetailBody(
 ) {
   const usesNativeWorkspaceColumns = useNativeWorkspaceColumnsSupported();
   const { layout } = useAdaptiveWorkspaceLayout();
+  const [sidebarVisible, setSidebarVisible] = useState(false);
+  const showCompactSidebar = layout.variant === "compact";
+  const openSidebarGesture = useMemo(
+    () =>
+      // oxlint-disable-next-line react/capitalized-calls -- Gesture.Pan is a gesture factory, not a React component.
+      Gesture.Pan()
+        .runOnJS(true)
+        .activeOffsetX([-12, 12])
+        .failOffsetY([-24, 24])
+        .onEnd((event) => {
+          if (event.translationX > 45 && Math.abs(event.translationY) < 45) {
+            setSidebarVisible(true);
+          }
+        }),
+    [],
+  );
   const deviceType = useDeviceType();
   const workspace = useWorkspaceTabs();
   const sidebarSearchActive =
@@ -1944,6 +1964,20 @@ function ThreadDetailBody(
             </Animated.View>
           </ComposerPopoverHost>
         </KeyboardStickyView>
+      ) : null}
+      {showCompactSidebar ? (
+        <>
+          <GestureDetector gesture={openSidebarGesture}>
+            <Pressable
+              accessibilityLabel="Open sidebar"
+              accessibilityRole="button"
+              className="absolute bottom-0 left-0 top-0"
+              onPress={() => setSidebarVisible(true)}
+              style={{ width: 20, zIndex: 20 }}
+            />
+          </GestureDetector>
+          <CompactSidebarDrawer visible={sidebarVisible} onClose={() => setSidebarVisible(false)} />
+        </>
       ) : null}
     </View>
   );
