@@ -422,6 +422,17 @@ export function HomeScreen(props: HomeScreenProps) {
   const [settledVisibleCount, setSettledVisibleCount] = useState(
     THREAD_LIST_V2_SETTLED_INITIAL_COUNT,
   );
+  const [collapsedThreadIds, setCollapsedThreadIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const toggleThreadCollapsed = (threadKey: string) => {
+    setCollapsedThreadIds((current) => {
+      const next = new Set(current);
+      if (next.has(threadKey)) next.delete(threadKey);
+      else next.add(threadKey);
+      return next;
+    });
+  };
   const settledResetKey = `${props.selectedEnvironmentId ?? "all"}:${v2ProjectScopeKey ?? "all"}:${props.searchQuery.trim()}`;
   const [lastSettledResetKey, setLastSettledResetKey] = useState(settledResetKey);
   if (lastSettledResetKey !== settledResetKey) {
@@ -482,6 +493,7 @@ export function HomeScreen(props: HomeScreenProps) {
     snoozedShelfExpanded,
     settledShelfExpanded,
     selectedThreadKey,
+    collapsedThreadIds,
   });
   // Called as `props.onSelectThread(...)`, the compiler would cache this handler on the whole
   // props object, which is new on every render of Home's parent.
@@ -639,6 +651,11 @@ export function HomeScreen(props: HomeScreenProps) {
         onSwipeableWillOpen={handleSwipeableWillOpen}
         simultaneousSwipeGesture={homeScrollGesture}
         activationKey={item.key}
+        depth={item.item.depth ?? 0}
+        hasChildren={item.item.hasChildren === true}
+        collapsed={item.item.collapsed === true}
+        role={item.item.role ?? null}
+        onToggleCollapsed={() => toggleThreadCollapsed(`${thread.environmentId}:${thread.id}`)}
       />
     );
   };
@@ -655,6 +672,7 @@ export function HomeScreen(props: HomeScreenProps) {
     selectedThreadKey,
     threadSearchMatchByKey,
     workingShelfEnabled,
+    collapsedThreadIds,
   };
 
   const hasAnyThreads =

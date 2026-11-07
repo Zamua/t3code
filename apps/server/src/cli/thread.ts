@@ -623,6 +623,10 @@ const threadStartCommand = Command.make("start", {
     ),
     Flag.optional,
   ),
+  parentThread: Flag.String("parent-thread").pipe(
+    Flag.withDescription("Parent thread id. Makes this a child in the app's hierarchy."),
+    Flag.optional,
+  ),
   worktree: Flag.String("worktree").pipe(
     Flag.withDescription(
       "Run in a new git worktree based on this branch, tag, or commit, instead of the project folder.",
@@ -658,6 +662,9 @@ const threadStartCommand = Command.make("start", {
           },
         };
       });
+      const parentThreadId = Option.isSome(flags.parentThread)
+        ? yield* decodeThreadId(flags.parentThread.value)
+        : undefined;
       if (Option.isSome(flags.provider) !== Option.isSome(flags.model)) {
         return yield* new ThreadUsageError({ detail: "--provider and --model go together." });
       }
@@ -676,6 +683,7 @@ const threadStartCommand = Command.make("start", {
               message,
               ...(workspaceStrategy === undefined ? {} : { workspaceStrategy }),
               ...(importedNativeThread === undefined ? {} : { importedNativeThread }),
+              ...(parentThreadId === undefined ? {} : { parentThreadId }),
               ...(Option.isSome(flags.provider) && Option.isSome(flags.model)
                 ? {
                     modelSelection: {

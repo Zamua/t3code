@@ -351,6 +351,59 @@ export function getThreadListV2OrderedSection(input: {
   return applyPendingThreadOrder(ordered, input.section, pending);
 }
 
+export type ThreadHierarchyRole = "root" | "project" | "worker";
+
+interface ThreadHierarchyRow {
+  readonly thread: EnvironmentThreadShell;
+  readonly depth: number;
+  readonly hasChildren: boolean;
+  readonly collapsed: boolean;
+  readonly role: ThreadHierarchyRole;
+}
+
+/** Flatten the active threads into a parent-first tree. Unlinked threads stay roots. */
+export function orderThreadsAsHierarchy(input: {
+  readonly threads: ReadonlyArray<EnvironmentThreadShell>;
+  readonly collapsedThreadIds?: ReadonlySet<string>;
+}): ReadonlyArray<ThreadHierarchyRow> {
+  const keyOf = (thread: EnvironmentThreadShell) => `${thread.environmentId}:${thread.id}`;
+  const byId = new Map(input.threads.map((thread) => [String(thread.id), thread] as const));
+  const childrenByParent = new Map<string, EnvironmentThreadShell[]>();
+  const roots: EnvironmentThreadShell[] = [];
+  for (const thread of input.threads) {
+    const parentId = thread.lineage.parentThreadId;
+    if (parentId !== null && String(parentId) !== String(thread.id) && byId.has(String(parentId))) {
+      const parentKey = String(parentId);
+      const children = childrenByParent.get(parentKey) ?? [];
+      children.push(thread);
+      childrenByParent.set(parentKey, children);
+    } else {
+      roots.push(thread);
+    }
+  }
+  const rows: ThreadHierarchyRow[] = [];
+  const visited = new Set<string>();
+  const walk = (thread: EnvironmentThreadShell, depth: number) => {
+    if (visited.has(String(thread.id))) return;
+    visited.add(String(thread.id));
+    const children = childrenByParent.get(String(thread.id)) ?? [];
+    const collapsed = input.collapsedThreadIds?.has(keyOf(thread)) === true;
+    rows.push({
+      thread,
+      depth,
+      hasChildren: children.length > 0,
+      collapsed,
+      role: depth === 0 ? "root" : depth === 1 ? "project" : "worker",
+    });
+    if (collapsed) return;
+    for (const child of children) walk(child, depth + 1);
+  };
+  for (const root of roots) walk(root, 0);
+  // A cycle or a broken parent chain still gets a row.
+  for (const thread of input.threads) walk(thread, 0);
+  return rows;
+}
+
 export interface ThreadListV2Item {
   readonly thread: EnvironmentThreadShell;
   readonly variant: "card" | "slim";
@@ -358,6 +411,10 @@ export interface ThreadListV2Item {
   readonly pinned: boolean;
   readonly wokeAt: string | null;
   readonly isLast: boolean;
+  readonly depth?: number;
+  readonly hasChildren?: boolean;
+  readonly collapsed?: boolean;
+  readonly role?: ThreadHierarchyRole | null;
 }
 
 export interface ThreadListV2Layout {
@@ -458,6 +515,10 @@ export function threadListV2ListItemsAreEqual(
         previous.item.snoozed === item.item.snoozed &&
         previous.item.pinned === item.item.pinned &&
         previous.item.wokeAt === item.item.wokeAt &&
+        previous.item.depth === item.item.depth &&
+        previous.item.hasChildren === item.item.hasChildren &&
+        previous.item.collapsed === item.item.collapsed &&
+        previous.item.role === item.item.role &&
         previous.snoozeWakeLabelText === item.snoozeWakeLabelText &&
         previous.timeLabel === item.timeLabel &&
         previous.snoozePresetMinute === item.snoozePresetMinute &&
@@ -671,6 +732,10 @@ export function buildThreadListV2Items(input: {
   readonly settledShelfExpanded?: boolean;
   readonly selectedThreadKey?: string | null;
   readonly queuedThreadKeys?: ReadonlySet<string>;
+  /** Render the active section as a parent-first tree. */
+  readonly hierarchyEnabled?: boolean;
+  /** Collapsed parent keys, `environmentId:threadId`. */
+  readonly collapsedThreadIds?: ReadonlySet<string>;
   /** Whether the shelf may list a settled row yet; older settled rows load in pages. */
   readonly isListedSettled?: (thread: EnvironmentThreadShell) => boolean;
   /** Settled threads in scope that are not local (older settled threads not loaded). */
@@ -799,9 +864,22 @@ export function buildThreadListV2Items(input: {
     };
   }
 
-  const orderedActive = workingShelfEnabled
+  const orderedActiveFlat = workingShelfEnabled
     ? sortInboxThreadsByReturn(active, input.inboxReturnAt)
     : applyPendingThreadOrder(sortThreadsForListV2(active), "active", pending);
+  const orderedActiveRows =
+    input.hierarchyEnabled === true
+      ? orderThreadsAsHierarchy({
+          threads: orderedActiveFlat,
+          collapsedThreadIds: input.collapsedThreadIds,
+        })
+      : orderedActiveFlat.map((thread) => ({
+          thread,
+          depth: 0,
+          hasChildren: false,
+          collapsed: false,
+          role: null as ThreadHierarchyRole | null,
+        }));
   const orderedWorking = sortWorkingThreadsBySend(working);
   const orderedSnoozed = [...snoozed].sort(
     (left, right) =>
@@ -860,14 +938,18 @@ export function buildThreadListV2Items(input: {
       isLast: false,
     });
   }
-  for (const thread of orderedActive) {
+  for (const row of orderedActiveRows) {
     items.push({
-      thread,
+      thread: row.thread,
       variant: "card",
       snoozed: false,
       pinned: false,
-      wokeAt: resolveThreadListV2WokeAt(thread, { now }),
+      wokeAt: resolveThreadListV2WokeAt(row.thread, { now }),
       isLast: false,
+      depth: row.depth,
+      hasChildren: row.hasChildren,
+      collapsed: row.collapsed,
+      role: row.role,
     });
   }
   const workingShelfHeaderIndex = orderedWorking.length > 0 ? items.length : null;

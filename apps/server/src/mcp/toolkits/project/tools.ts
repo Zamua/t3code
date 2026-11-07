@@ -145,6 +145,8 @@ const ThreadLaunchTool = Tool.make("t3_thread_launch", {
           "'worktree': new checkout from `baseRef`. Honor a requested base. Otherwise, independent work uses the default branch as `remote/branch` (e.g. `origin/main`) with `startFromOrigin: true`; with no remote, use the local default branch. Required unpublished commits and dependent or stacked work use their local base with `startFromOrigin: false`. 'existing_worktree': bind `worktreePath`, a project worktree. 'root': project checkout, the default, not your worktree. Uncommitted edits are not copied.",
       }),
     ),
+    /** Parent in the app's agent hierarchy. Omitted makes this a root. */
+    parentThreadId: Schema.optional(ThreadId),
     message: Schema.optional(
       Schema.String.check(Schema.isMaxLength(120000)).annotate({
         description: "First prompt. Omit it and `attachments` for idle.",

@@ -2942,6 +2942,31 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
       });
     }
 
+    const parentThread =
+      command.parentThreadId === undefined || command.parentThreadId === null
+        ? null
+        : yield* projectionStore.getThread(command.parentThreadId).pipe(
+            Effect.catchTags({
+              ProjectionStoreThreadNotFoundError: () => Effect.succeed(null),
+            }),
+            Effect.mapError(
+              (cause) =>
+                new OrchestratorProjectionError({
+                  threadId: command.parentThreadId!,
+                  cause,
+                }),
+            ),
+          );
+    // A parent in another project is not a usable hierarchy edge.
+    const parentThreadId =
+      parentThread !== null && parentThread.projectId === command.projectId
+        ? parentThread.id
+        : null;
+    const rootThreadId =
+      parentThread !== null && parentThreadId !== null
+        ? parentThread.lineage.rootThreadId
+        : command.threadId;
+
     const now = yield* DateTime.now;
     const emitEvent = emit(events, command);
     const thread: OrchestrationV2AppThread = {
@@ -2964,9 +2989,9 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         ? {}
         : { delegatedFrom: command.delegatedFrom }),
       lineage: {
-        parentThreadId: null,
+        parentThreadId,
         relationshipToParent: null,
-        rootThreadId: command.threadId,
+        rootThreadId,
       },
       forkedFrom: null,
       createdAt: now,

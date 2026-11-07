@@ -74,6 +74,7 @@ import {
   resolveThreadListV2ProviderDrivers,
   resolveThreadListV2SwipeActions,
   layoutThreadListV2RowMenuActions,
+  type ThreadHierarchyRole,
   type ThreadListV2Status,
 } from "./threadListV2";
 import { QueuedMessageIcon } from "./queued-message-icon";
@@ -138,6 +139,12 @@ const DONE_STATUS_LABEL: StatusLabel = {
   icon: "checkmark.circle",
   className: "text-adaptive-emerald-700-300",
   iconTintClassName: "accent-adaptive-emerald-700-300",
+};
+
+const HIERARCHY_ROLE_SYMBOL: Record<ThreadHierarchyRole, AppSymbolName> = {
+  root: "house",
+  project: "folder",
+  worker: "person.2",
 };
 
 function ThreadListV2Duration(props: { readonly startedAt: string | null }) {
@@ -673,6 +680,11 @@ export const ThreadListV2Row = memo(function ThreadListV2Row(props: {
   readonly onSwipeableWillOpen: (methods: SwipeableMethods) => void;
   readonly onSwipeableClose: (methods: SwipeableMethods) => void;
   readonly activationKey?: string;
+  readonly depth?: number;
+  readonly hasChildren?: boolean;
+  readonly collapsed?: boolean;
+  readonly role?: ThreadHierarchyRole | null;
+  readonly onToggleCollapsed?: () => void;
   readonly searchMatch?: EnvironmentThreadSearchMatch;
   readonly searchQuery?: string;
   readonly simultaneousSwipeGesture?: ComponentProps<typeof ThreadSwipeable>["simultaneousWith"];
@@ -707,6 +719,11 @@ export const ThreadListV2Row = memo(function ThreadListV2Row(props: {
     onSetThreadAutoSettle,
     onMoveThread,
   } = props;
+  const depth = props.depth ?? 0;
+  const hasChildren = props.hasChildren === true;
+  const collapsed = props.collapsed === true;
+  const role = props.role ?? null;
+  const hierarchyIndent = depth * 16;
   const snoozedRow = props.snoozed === true;
   const pinnedRow = props.pinned === true;
   const dormant = useSwipeRowDormant(props.activationKey);
@@ -1124,11 +1141,48 @@ export const ThreadListV2Row = memo(function ThreadListV2Row(props: {
       ? `Opens the thread. Swipe left to ${primaryAction.label.toLowerCase()}.`
       : `Opens the thread. Swipe left for ${primaryAction.label.toLowerCase()} and snooze actions.`;
 
-  const titleTextInset = props.project ? projectIconSize + 8 : 0;
+  const hierarchyLeadingInset = hierarchyIndent + (hasChildren || depth > 0 ? 24 : 0);
+  const titleTextInset =
+    hierarchyLeadingInset + (props.project || role !== null ? projectIconSize + 8 : 0);
   const cardContent = (
     <>
-      <View className="flex-row items-start gap-2">
-        {props.project ? (
+      <View className="flex-row items-start gap-2" style={{ paddingLeft: hierarchyIndent }}>
+        {hasChildren || depth > 0 ? (
+          hasChildren ? (
+            <Pressable
+              accessibilityHint={`${collapsed ? "Expands" : "Collapses"} this thread's children.`}
+              accessibilityLabel={collapsed ? `Expand ${thread.title}` : `Collapse ${thread.title}`}
+              accessibilityRole="button"
+              disabled={props.onToggleCollapsed === undefined}
+              hitSlop={8}
+              onLongPress={() => undefined}
+              onPress={() => props.onToggleCollapsed?.()}
+              className="justify-center"
+              style={{ height: titleLineHeight, width: 16 }}
+            >
+              <SymbolView
+                name={collapsed ? "chevron.right" : "chevron.down"}
+                size={11}
+                tintColorClassName={rowAppearance.tertiaryIconTintClassName}
+                type="monochrome"
+                weight="semibold"
+              />
+            </Pressable>
+          ) : (
+            <View style={{ width: 16 }} />
+          )
+        ) : null}
+        {role !== null ? (
+          <View className="justify-center" style={{ height: titleLineHeight }}>
+            <SymbolView
+              name={HIERARCHY_ROLE_SYMBOL[role]}
+              size={projectIconSize}
+              tintColorClassName={rowAppearance.tertiaryIconTintClassName}
+              type="monochrome"
+              weight="semibold"
+            />
+          </View>
+        ) : props.project ? (
           <View className="justify-center" style={{ height: titleLineHeight }}>
             <ProjectFavicon
               environmentId={thread.environmentId}

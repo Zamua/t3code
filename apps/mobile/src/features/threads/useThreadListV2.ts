@@ -65,6 +65,7 @@ export function useThreadListV2(input: {
   readonly snoozedShelfExpanded: boolean;
   readonly settledShelfExpanded: boolean;
   readonly selectedThreadKey: string | null;
+  readonly collapsedThreadIds?: ReadonlySet<string>;
 }) {
   const { threads, workingShelfEnabled } = input;
   const layoutTime = useMemo(
@@ -152,6 +153,8 @@ export function useThreadListV2(input: {
         snoozedShelfExpanded: input.snoozedShelfExpanded,
         settledShelfExpanded: input.settledShelfExpanded,
         selectedThreadKey: input.selectedThreadKey,
+        hierarchyEnabled: true,
+        collapsedThreadIds: input.collapsedThreadIds,
         isListedSettled: isListed,
         unloadedSettledCount: unloadedCount(
           threads.filter(
@@ -184,6 +187,7 @@ export function useThreadListV2(input: {
       input.snoozedShelfExpanded,
       input.settledShelfExpanded,
       input.selectedThreadKey,
+      input.collapsedThreadIds,
       isListed,
       unloadedCount,
       scopes,
