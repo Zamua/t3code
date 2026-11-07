@@ -142,10 +142,34 @@ const DONE_STATUS_LABEL: StatusLabel = {
 };
 
 const HIERARCHY_ROLE_SYMBOL: Record<ThreadHierarchyRole, AppSymbolName> = {
-  root: "house",
+  // oxlint-disable-next-line t3code/no-mobile-pull-request-glyph-literals -- hierarchy root icon, not a pull request stack.
+  root: "square.3.layers.3d",
   project: "folder",
-  worker: "person.2",
+  worker: "circle.fill",
 };
+
+function ThreadTreeRail(props: { readonly depth: number }) {
+  if (props.depth <= 0) return null;
+  return (
+    <View
+      pointerEvents="none"
+      className="absolute bottom-0 left-0 top-0"
+      style={{ width: props.depth * 20 + 8 }}
+    >
+      {Array.from({ length: props.depth }, (_, index) => (
+        <View
+          key={`tree-line-${index}`}
+          className="absolute bottom-0 top-0 bg-border-subtle"
+          style={{ left: index * 20 + 10, width: 1 }}
+        />
+      ))}
+      <View
+        className="absolute bg-border-subtle"
+        style={{ left: (props.depth - 1) * 20 + 10, top: "50%", width: 10, height: 1 }}
+      />
+    </View>
+  );
+}
 
 function ThreadListV2Duration(props: { readonly startedAt: string | null }) {
   const startedAtMs = Date.parse(props.startedAt ?? "");
@@ -723,7 +747,7 @@ export const ThreadListV2Row = memo(function ThreadListV2Row(props: {
   const hasChildren = props.hasChildren === true;
   const collapsed = props.collapsed === true;
   const role = props.role ?? null;
-  const hierarchyIndent = depth * 16;
+  const hierarchyIndent = depth === 0 ? 0 : depth * 20 + 8;
   const snoozedRow = props.snoozed === true;
   const pinnedRow = props.pinned === true;
   const dormant = useSwipeRowDormant(props.activationKey);
@@ -1141,37 +1165,14 @@ export const ThreadListV2Row = memo(function ThreadListV2Row(props: {
       ? `Opens the thread. Swipe left to ${primaryAction.label.toLowerCase()}.`
       : `Opens the thread. Swipe left for ${primaryAction.label.toLowerCase()} and snooze actions.`;
 
-  const hierarchyLeadingInset = hierarchyIndent + (hasChildren || depth > 0 ? 24 : 0);
   const titleTextInset =
-    hierarchyLeadingInset + (props.project || role !== null ? projectIconSize + 8 : 0);
+    hierarchyIndent +
+    (props.project || role !== null ? projectIconSize + 8 : 0) +
+    (hasChildren || depth > 0 ? 24 : 0);
   const cardContent = (
-    <>
+    <View className="relative">
+      <ThreadTreeRail depth={depth} />
       <View className="flex-row items-start gap-2" style={{ paddingLeft: hierarchyIndent }}>
-        {hasChildren || depth > 0 ? (
-          hasChildren ? (
-            <Pressable
-              accessibilityHint={`${collapsed ? "Expands" : "Collapses"} this thread's children.`}
-              accessibilityLabel={collapsed ? `Expand ${thread.title}` : `Collapse ${thread.title}`}
-              accessibilityRole="button"
-              disabled={props.onToggleCollapsed === undefined}
-              hitSlop={8}
-              onLongPress={() => undefined}
-              onPress={() => props.onToggleCollapsed?.()}
-              className="justify-center"
-              style={{ height: titleLineHeight, width: 16 }}
-            >
-              <SymbolView
-                name={collapsed ? "chevron.right" : "chevron.down"}
-                size={11}
-                tintColorClassName={rowAppearance.tertiaryIconTintClassName}
-                type="monochrome"
-                weight="semibold"
-              />
-            </Pressable>
-          ) : (
-            <View style={{ width: 16 }} />
-          )
-        ) : null}
         {role !== null ? (
           <View className="justify-center" style={{ height: titleLineHeight }}>
             <SymbolView
@@ -1193,6 +1194,29 @@ export const ThreadListV2Row = memo(function ThreadListV2Row(props: {
               workspaceRoot={props.project.workspaceRoot}
             />
           </View>
+        ) : null}
+        {hasChildren ? (
+          <Pressable
+            accessibilityHint={`${collapsed ? "Expands" : "Collapses"} this thread's children.`}
+            accessibilityLabel={collapsed ? `Expand ${thread.title}` : `Collapse ${thread.title}`}
+            accessibilityRole="button"
+            disabled={props.onToggleCollapsed === undefined}
+            hitSlop={8}
+            onLongPress={() => undefined}
+            onPress={() => props.onToggleCollapsed?.()}
+            className="justify-center"
+            style={{ height: titleLineHeight, width: 16 }}
+          >
+            <SymbolView
+              name={collapsed ? "chevron.right" : "chevron.down"}
+              size={11}
+              tintColorClassName={rowAppearance.tertiaryIconTintClassName}
+              type="monochrome"
+              weight="semibold"
+            />
+          </Pressable>
+        ) : depth > 0 ? (
+          <View style={{ width: 16 }} />
         ) : null}
         <Text
           className={cn(
@@ -1415,7 +1439,7 @@ export const ThreadListV2Row = memo(function ThreadListV2Row(props: {
           </View>
         ) : null}
       </View>
-    </>
+    </View>
   );
 
   const fadedCardContent = recede ? (

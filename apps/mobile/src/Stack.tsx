@@ -544,7 +544,9 @@ const RootStackConfig = createWorkspaceStackNavigator({
     Thread: createNativeStackScreen({
       screen: ThreadRouteScreen,
       linking: { path: "threads/:environmentId?/:threadId?", alias: ["new/draft"] },
-      options: pageRoute({ duoMinimize: "onScrollUp" }),
+      // The compact chat uses a left-edge swipe for the Crook sidebar. The native
+      // pop gesture would otherwise win that edge and show the full Home list.
+      options: { ...pageRoute({ duoMinimize: "onScrollUp" }), gestureEnabled: false },
     }),
     NewTaskProject: createNativeStackScreen({
       screen: NewTaskRouteScreen,

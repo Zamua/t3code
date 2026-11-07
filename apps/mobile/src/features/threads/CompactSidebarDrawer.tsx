@@ -17,7 +17,7 @@ export function CompactSidebarDrawer(props: {
   const { visible, onClose } = props;
   const { width: windowWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const drawerWidth = Math.min(360, Math.round(windowWidth * 0.88));
+  const drawerWidth = Math.min(340, Math.round(windowWidth * 0.76));
   const [translateX] = useState(() => new Animated.Value(-drawerWidth));
 
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- keeps the native drawer offset in step with the visible prop
@@ -87,7 +87,7 @@ export function CompactSidebarDrawer(props: {
           accessibilityRole="button"
           className="flex-1"
           onPress={onClose}
-          style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+          style={{ backgroundColor: "rgba(0,0,0,0.28)" }}
         />
       </View>
     </Modal>
