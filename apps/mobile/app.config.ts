@@ -230,7 +230,7 @@ const config: ExpoConfig = {
     supportsTablet: true,
     requireFullScreen: process.env.T3_SHOWCASE_CAPTURE_BUILD === "1",
     bundleIdentifier: iosBundleIdentifier,
-    buildNumber: "6",
+    buildNumber: "7",
     // Crook's Apple team. The existing TestFlight app record is dev.zamua.ask.
     appleTeamId: "7FDZK7U8A6",
     // T3's associated domains are intentionally omitted for the Crook build.
