@@ -95,9 +95,9 @@ const VARIANT_CONFIG = {
     assets: PREVIEW_ASSETS,
   },
   production: {
-    appName: "T3 Code",
+    appName: "Crook",
     scheme: "t3code",
-    iosBundleIdentifier: "com.t3tools.t3code",
+    iosBundleIdentifier: "dev.zamua.ask",
     androidPackage: "com.t3tools.t3code",
     relyingParty: "clerk.t3.codes",
     assets: RELEASE_ASSETS,
@@ -201,29 +201,7 @@ const widgetsPlugin: NonNullable<ExpoConfig["plugins"]>[number] = [
   },
 ];
 
-const sharingPlugin: NonNullable<ExpoConfig["plugins"]>[number] = [
-  "expo-sharing",
-  {
-    ios: {
-      // Personal Teams cannot sign App Groups or extension targets; keep local builds usable.
-      enabled: !isIosPersonalTeamBuild,
-      extensionBundleIdentifier: `${iosBundleIdentifier}.sharing`,
-      appGroupId: `group.${iosBundleIdentifier}`,
-      activationRule: {
-        supportsText: true,
-        supportsWebUrlWithMaxCount: 1,
-        supportsImageWithMaxCount: 8,
-        supportsMovieWithMaxCount: 8,
-        supportsFileWithMaxCount: 8,
-      },
-    },
-    android: {
-      enabled: true,
-      singleShareMimeTypes: ["*/*"],
-      multipleShareMimeTypes: ["*/*"],
-    },
-  },
-];
+// Crook v1 does not ship the share extension; it adds another signing target.
 
 // Match iOS PostScript names on Android so RN and the native composer share fonts before runtime loading.
 
@@ -241,9 +219,10 @@ const config: ExpoConfig = {
   icon: variant.assets.appIcon,
   userInterfaceStyle: "automatic",
   updates: {
-    enabled: repoEnv.T3CODE_MOBILE_UPDATES_ENABLED !== "0",
+    // Crook ships through TestFlight, not T3's EAS update channels.
+    enabled: false,
     url: "https://u.expo.dev/d763fcb8-d37c-41ea-a773-b54a0ab4a454",
-    checkAutomatically: "ON_LOAD",
+    checkAutomatically: "NEVER",
     fallbackToCacheTimeout: 0,
   },
   ios: {
@@ -251,13 +230,10 @@ const config: ExpoConfig = {
     supportsTablet: true,
     requireFullScreen: process.env.T3_SHOWCASE_CAPTURE_BUILD === "1",
     bundleIdentifier: iosBundleIdentifier,
-    // Avoid Personal Team fallback: it cannot sign App Groups, Apple sign-in or push entitlements.
-    appleTeamId: "ARK85ZXQ4Z",
-    associatedDomains: [
-      `applinks:${variant.relyingParty}`,
-      `webcredentials:${variant.relyingParty}`,
-      `applinks:${HOSTED_APP_HOST}`,
-    ],
+    buildNumber: "1",
+    // Crook's Apple team. The existing TestFlight app record is dev.zamua.ask.
+    appleTeamId: "7FDZK7U8A6",
+    // T3's associated domains are intentionally omitted for the Crook build.
     entitlements: {
       "keychain-access-groups": [`$(AppIdentifierPrefix)${variant.iosBundleIdentifier}`],
     },
@@ -348,9 +324,7 @@ const config: ExpoConfig = {
     ],
     "expo-secure-store",
     "expo-sqlite",
-    ...(isIosPersonalTeamBuild
-      ? [sharingPlugin]
-      : ["./plugins/withShareExtensionDisplayName.cjs", sharingPlugin]),
+    // Crook v1 does not ship the share extension; it adds another signing target.
     [
       "expo-notifications",
       {
@@ -359,8 +333,8 @@ const config: ExpoConfig = {
         mode: APP_VARIANT === "development" ? "development" : "production",
       },
     ],
-    // Gate Clerk here: withoutIosPersonalTeamCapabilities runs too early to strip its entitlement.
-    ["@clerk/expo", { theme: "./clerk-theme.json", appleSignIn: !isIosPersonalTeamBuild }],
+    // Crook does not use Clerk or T3 Connect, so it needs no Sign in with Apple entitlement.
+    ["@clerk/expo", { theme: "./clerk-theme.json", appleSignIn: false }],
     "expo-web-browser",
     [
       "expo-quick-actions",

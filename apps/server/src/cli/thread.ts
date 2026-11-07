@@ -5,6 +5,7 @@ import {
   OrchestratorMcpThreadSendResult,
   OrchestratorMcpThreadWaitResult,
   ProjectId,
+  ProviderDriverKind,
   RunId,
   ThreadId,
   TrimmedNonEmptyString,
@@ -616,6 +617,12 @@ const threadStartCommand = Command.make("start", {
     Flag.withDescription("Model slug. Defaults to the project's default model."),
     Flag.optional,
   ),
+  importNative: Flag.String("import-native").pipe(
+    Flag.withDescription(
+      "Adopt an existing provider session instead of starting a new one, as driver:nativeId, for example opencode:ses_... .",
+    ),
+    Flag.optional,
+  ),
   worktree: Flag.String("worktree").pipe(
     Flag.withDescription(
       "Run in a new git worktree based on this branch, tag, or commit, instead of the project folder.",
@@ -634,6 +641,23 @@ const threadStartCommand = Command.make("start", {
     Effect.gen(function* () {
       const message = yield* readMessageArgument(flags.message);
       const workspaceStrategy = yield* launchWorkspaceStrategy(flags);
+      const importedNativeThread = yield* Effect.gen(function* () {
+        if (Option.isNone(flags.importNative)) return undefined;
+        const raw = flags.importNative.value;
+        const separator = raw.indexOf(":");
+        if (separator <= 0 || separator === raw.length - 1) {
+          return yield* new ThreadUsageError({
+            detail: "--import-native expects driver:nativeId.",
+          });
+        }
+        return {
+          ref: {
+            driver: ProviderDriverKind.make(raw.slice(0, separator)),
+            nativeId: raw.slice(separator + 1),
+            strength: "strong" as const,
+          },
+        };
+      });
       if (Option.isSome(flags.provider) !== Option.isSome(flags.model)) {
         return yield* new ThreadUsageError({ detail: "--provider and --model go together." });
       }
@@ -651,6 +675,7 @@ const threadStartCommand = Command.make("start", {
               title,
               message,
               ...(workspaceStrategy === undefined ? {} : { workspaceStrategy }),
+              ...(importedNativeThread === undefined ? {} : { importedNativeThread }),
               ...(Option.isSome(flags.provider) && Option.isSome(flags.model)
                 ? {
                     modelSelection: {

@@ -14,6 +14,7 @@ import {
   ProjectCreatePayload,
   ProjectUpdatePayload,
   ProjectId,
+  ProviderDriverKind,
   OrchestratorMcpClientRequestId,
   OrchestratorMcpEnvironmentTarget,
   OrchestratorMcpFailure,
@@ -153,6 +154,19 @@ const ThreadLaunchTool = Tool.make("t3_thread_launch", {
     clientRequestId: Schema.optional(OrchestratorMcpClientRequestId),
     /** Set by a linked environment launching its agent's delegated task here; ignored otherwise. */
     delegatedFrom: Schema.optional(OrchestrationV2DelegatedFrom),
+    /**
+     * Adopt an existing provider-native session instead of starting a new one.
+     * The OpenCode adapter resumes the session and keeps its history.
+     */
+    importedNativeThread: Schema.optional(
+      Schema.Struct({
+        ref: Schema.Struct({
+          driver: ProviderDriverKind,
+          nativeId: TrimmedNonEmptyString,
+          strength: Schema.Literal("strong"),
+        }),
+      }),
+    ),
   }),
   success: Schema.Struct({
     threadId: ThreadId,
